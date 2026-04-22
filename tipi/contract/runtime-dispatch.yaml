@@ -1,0 +1,74 @@
+# tipi/contract/runtime-dispatch.yaml
+# The authoritative mapping from dispatch intent to runtime CLI.
+# Read by MCP wrappers; change here first, never hardcode elsewhere.
+#
+# Each intent has exactly one transport + one command template. The
+# command is a list (argv form). Placeholders: {slug}, {text}, and any
+# other per-intent vars are substituted via str.format_map at dispatch
+# time — wrappers validate required keys before invoking subprocess.
+
+version: 1
+
+intents:
+  chat_discord:
+    description: Fleet chatter via Discord surfaces (Wings / Zoe / Mara)
+    targets: [wings, zoe, mara]
+    transport: dizzy
+    command:
+      - python3
+      - "{vault_root}/claude/scripts/dizzy.py"
+      - "--channel"
+      - "bots"
+      - "send"
+      - "--mention"
+      - "{slug}"
+      - "{text}"
+
+  dispatch_hermes:
+    description: Dispatch task to Hermes (local Nous runtime, MacBook Pro)
+    targets: [hermes]
+    transport: hermes-cli
+    command:
+      - hermes
+      - chat
+      - "-Q"
+      - "-q"
+      - "{text}"
+
+  dispatch_zolivier:
+    description: Dispatch task to Zolivier (local OpenClaw gateway)
+    targets: [zolivier]
+    transport: openclaw
+    command:
+      - openclaw
+      - exec
+      - "{text}"
+
+  dispatch_kimiclaw:
+    description: Dispatch task to KimiClaw (cloud OpenClaw pod)
+    targets: [kimiclaw]
+    transport: openclaw-cloud
+    command:
+      - openclaw
+      - exec
+      - "--remote"
+      - "{text}"
+
+  spawn_claude:
+    description: Spawn fresh Claude Code session
+    targets: [claude]
+    transport: claude-cli
+    command:
+      - claude
+      - "--dangerously-skip-permissions"
+      - "{text}"
+
+  reach_running_session:
+    description: Reach THIS running Claude Code session (after set_away_mode)
+    targets: [claude-self]
+    transport: telegram-bridge
+    note: "Deferred — claude-telegram-bridge exposes the interface; tipi does not call it directly yet."
+
+# Environment variables the wrappers expect:
+# - TIPI_VAULT_ROOT: absolute path to the =notes vault (for dizzy.py location)
+# Defaults to ~/Documents/=notes if unset.
