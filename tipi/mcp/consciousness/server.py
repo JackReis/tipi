@@ -24,14 +24,16 @@ from mcp.server.fastmcp import FastMCP
 from tipi.mcp.consciousness.stubs import (
     StubBeliefLedger,
     StubBodyReader,
+    StubHealthReader,
     StubMindIndex,
     body_state_snapshot,
 )
 
-# Wire the stubs. To swap to real backends, change these three lines.
+# Wire the stubs. To swap to real backends, change these lines.
 BELIEF_LEDGER = StubBeliefLedger()
 MIND_INDEX = StubMindIndex()
 BODY_READER = StubBodyReader()
+HEALTH_READER = StubHealthReader()
 
 
 def build_server() -> FastMCP:
@@ -72,6 +74,22 @@ def build_server() -> FastMCP:
         return {
             "repos": list(snap.repos),
             "recent_changes": list(snap.recent_changes),
+        }
+
+    @server.tool()
+    def health_snapshot() -> dict[str, Any]:
+        """Return the composite cross-layer health snapshot.
+
+        Shape matches `tipi/contract/consciousness-interface.json`. Consumed
+        by the infra-context-dashboard (Task B10) and the vs-tipi Today
+        chat mode (health chip row).
+        """
+        snap = HEALTH_READER.snapshot()
+        return {
+            "handoff_freshness": asdict(snap.handoff_freshness),
+            "ob1_sync_status": asdict(snap.ob1_sync_status),
+            "session_lock_state": [asdict(s) for s in snap.session_lock_state],
+            "project_memory_entries": asdict(snap.project_memory_entries),
         }
 
     return server

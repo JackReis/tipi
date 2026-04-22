@@ -6,6 +6,15 @@ implementations without changing the interface contract.
 
 from __future__ import annotations
 
+from tipi.mcp.consciousness.health import (
+    HandoffFreshness,
+    HealthReader,
+    HealthSnapshot,
+    OB1SyncStatus,
+    PerSessionMemoryEntry,
+    ProjectMemoryEntries,
+    SessionLock,
+)
 from tipi.mcp.consciousness.interface import (
     Belief,
     BodyReader,
@@ -78,3 +87,39 @@ def body_state_snapshot() -> BodyState:
         repos=tuple(reader.list_repos()),
         recent_changes=tuple(reader.recent_changes(repo="=notes", limit=1)),
     )
+
+
+class StubHealthReader(HealthReader):
+    def snapshot(self) -> HealthSnapshot:
+        return HealthSnapshot(
+            handoff_freshness=HandoffFreshness(
+                newest_file="claude/mcp-coordination/state/session-handoffs/stub.md",
+                age_seconds=60,
+                count_last_24h=3,
+            ),
+            ob1_sync_status=OB1SyncStatus(
+                backend="stub",
+                last_sync="2026-04-21T00:00:00Z",
+                ok=True,
+                record_count=0,
+            ),
+            session_lock_state=(
+                SessionLock(
+                    task_slug="stub-task",
+                    locked_by="stub-session",
+                    lock_acquired="2026-04-21T00:00:00Z",
+                    age_minutes=5,
+                ),
+            ),
+            project_memory_entries=ProjectMemoryEntries(
+                total=42,
+                limit=300,
+                per_session=(
+                    PerSessionMemoryEntry(
+                        session_id="stub-session",
+                        count=42,
+                        approaching_consolidation=False,
+                    ),
+                ),
+            ),
+        )

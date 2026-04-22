@@ -1,0 +1,274 @@
+{
+  "$defs": {
+    "Belief": {
+      "description": "A durable, subjectively-weighted claim in the belief ledger.\n\nBeliefs are derived \u2014 never raw captures. A write to spirit implies a\nreflection pass over mind.",
+      "properties": {
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "derived_from": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived From",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "subjective_weight": {
+          "title": "Subjective Weight",
+          "type": "number"
+        },
+        "timestamp": {
+          "default": "",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "claim",
+        "subjective_weight"
+      ],
+      "title": "Belief",
+      "type": "object"
+    },
+    "BodyState": {
+      "description": "Snapshot of the body substrate.",
+      "properties": {
+        "recent_changes": {
+          "default": [],
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Recent Changes",
+          "type": "array"
+        },
+        "repos": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Repos",
+          "type": "array"
+        }
+      },
+      "title": "BodyState",
+      "type": "object"
+    },
+    "HandoffFreshness": {
+      "description": "How fresh is our cross-session coordination signal?",
+      "properties": {
+        "age_seconds": {
+          "title": "Age Seconds",
+          "type": "integer"
+        },
+        "count_last_24h": {
+          "title": "Count Last 24H",
+          "type": "integer"
+        },
+        "newest_file": {
+          "title": "Newest File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "newest_file",
+        "age_seconds",
+        "count_last_24h"
+      ],
+      "title": "HandoffFreshness",
+      "type": "object"
+    },
+    "HealthSnapshot": {
+      "description": "Composite \u2014 one poll of all four health fields at once.",
+      "properties": {
+        "handoff_freshness": {
+          "$ref": "#/$defs/HandoffFreshness"
+        },
+        "ob1_sync_status": {
+          "$ref": "#/$defs/OB1SyncStatus"
+        },
+        "project_memory_entries": {
+          "$ref": "#/$defs/ProjectMemoryEntries"
+        },
+        "session_lock_state": {
+          "items": {
+            "$ref": "#/$defs/SessionLock"
+          },
+          "title": "Session Lock State",
+          "type": "array"
+        }
+      },
+      "required": [
+        "handoff_freshness",
+        "ob1_sync_status",
+        "session_lock_state",
+        "project_memory_entries"
+      ],
+      "title": "HealthSnapshot",
+      "type": "object"
+    },
+    "MindRecord": {
+      "description": "A retrieval hit from the mind layer (backend-agnostic).\n\n`backend` discriminates the source: obn | khoj | knowledge-graph | ...",
+      "properties": {
+        "backend": {
+          "default": "obn",
+          "title": "Backend",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Metadata",
+          "type": "object"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "score"
+      ],
+      "title": "MindRecord",
+      "type": "object"
+    },
+    "OB1SyncStatus": {
+      "description": "Current state of the mind-layer index, whichever backend is live.",
+      "properties": {
+        "backend": {
+          "enum": [
+            "obn",
+            "khoj",
+            "ob1",
+            "stub"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "last_sync": {
+          "title": "Last Sync",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "record_count": {
+          "title": "Record Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "backend",
+        "last_sync",
+        "ok",
+        "record_count"
+      ],
+      "title": "OB1SyncStatus",
+      "type": "object"
+    },
+    "PerSessionMemoryEntry": {
+      "description": "Per-session breakdown of the vault-native project_memory.json.",
+      "properties": {
+        "approaching_consolidation": {
+          "title": "Approaching Consolidation",
+          "type": "boolean"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "session_id": {
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "count",
+        "approaching_consolidation"
+      ],
+      "title": "PerSessionMemoryEntry",
+      "type": "object"
+    },
+    "ProjectMemoryEntries": {
+      "description": "Top-level shape for project_memory.json health.",
+      "properties": {
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "per_session": {
+          "items": {
+            "$ref": "#/$defs/PerSessionMemoryEntry"
+          },
+          "title": "Per Session",
+          "type": "array"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "limit"
+      ],
+      "title": "ProjectMemoryEntries",
+      "type": "object"
+    },
+    "SessionLock": {
+      "description": "One lock held on a task in claude/tasks/active/.",
+      "properties": {
+        "age_minutes": {
+          "title": "Age Minutes",
+          "type": "integer"
+        },
+        "lock_acquired": {
+          "title": "Lock Acquired",
+          "type": "string"
+        },
+        "locked_by": {
+          "title": "Locked By",
+          "type": "string"
+        },
+        "task_slug": {
+          "title": "Task Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_slug",
+        "locked_by",
+        "lock_acquired",
+        "age_minutes"
+      ],
+      "title": "SessionLock",
+      "type": "object"
+    }
+  },
+  "$id": "tipi/contract/consciousness-interface.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Shared contract between tipi + vs-tipi (IDE enclosure) and the infra-context-dashboard (browser enclosure). Generated from tipi/mcp/consciousness/*.py \u2014 do not edit by hand.",
+  "title": "tipi consciousness interface"
+}
