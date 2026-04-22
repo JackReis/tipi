@@ -1,9 +1,7 @@
 """claude_spawn MCP wrapper — spawn a fresh Claude Code session.
 
-Equivalent of `claude --dangerously-skip-permissions "<prompt>"`.
-Use sparingly — spawns a new session, burns tokens, doesn't reach back
-into the caller's session. For reaching THIS running session, see the
-`reach_running_session` intent (telegram-bridge).
+Equivalent of `claude --dangerously-skip-permissions "<prompt>"`. Use sparingly:
+spawns a new session, burns tokens, doesn't reach back into the caller's session.
 """
 
 from __future__ import annotations
@@ -12,7 +10,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from tipi.mcp._dispatch import run_intent
+from tipi.mcp._dispatch import dispatch_tool_result, run_intent
 
 
 def build_server() -> FastMCP:
@@ -22,19 +20,11 @@ def build_server() -> FastMCP:
     def spawn_claude_session(text: str) -> dict[str, Any]:
         """Spawn a fresh Claude Code session with the given prompt.
 
-        The spawned session runs independently; this tool blocks until it
-        exits (or the 60s timeout trips). Most useful when you want the
-        current agent to initiate a parallel worker rather than continue
-        the task itself.
+        Blocks until the spawned session exits (or the 60s timeout trips).
+        Use when you want to initiate a parallel worker rather than continue
+        the task in the current session.
         """
-        result = run_intent("spawn_claude", text=text)
-        return {
-            "ok": result.ok,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "command": result.command,
-        }
+        return dispatch_tool_result(run_intent("spawn_claude", text=text))
 
     return server
 

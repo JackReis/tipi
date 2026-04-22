@@ -8,9 +8,10 @@ Run:
     python -m tipi.mcp.consciousness.server
 
 Smoke-test (from Python):
+    import asyncio
     from tipi.mcp.consciousness.server import build_server
     server = build_server()
-    tools = server.list_tools_sync()  # returns tool metadata for verification
+    tools = asyncio.run(server.list_tools())  # public FastMCP API
 """
 
 from __future__ import annotations

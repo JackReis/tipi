@@ -107,3 +107,11 @@ def test_run_intent_unknown_intent_raises_before_subprocess():
     runner = _fake_runner()
     with pytest.raises(DispatchError):
         run_intent("frobnicate", runner=runner, text="x")
+
+
+def test_run_intent_raises_when_vault_root_unset(monkeypatch):
+    """TIPI_VAULT_ROOT is required — surface a DispatchError instead of silent mis-route."""
+    monkeypatch.delenv("TIPI_VAULT_ROOT", raising=False)
+    runner = _fake_runner()
+    with pytest.raises(DispatchError, match="TIPI_VAULT_ROOT"):
+        run_intent("chat_discord", runner=runner, slug="zoe", text="hello")

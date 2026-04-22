@@ -63,12 +63,10 @@ intents:
       - "--dangerously-skip-permissions"
       - "{text}"
 
-  reach_running_session:
-    description: Reach THIS running Claude Code session (after set_away_mode)
-    targets: [claude-self]
-    transport: telegram-bridge
-    note: "Deferred — claude-telegram-bridge exposes the interface; tipi does not call it directly yet."
-
 # Environment variables the wrappers expect:
-# - TIPI_VAULT_ROOT: absolute path to the =notes vault (for dizzy.py location)
-# Defaults to ~/Documents/=notes if unset.
+# - TIPI_VAULT_ROOT: absolute path to the =notes vault (for dizzy.py location).
+#   REQUIRED. No default — run_intent raises if unset to prevent silent
+#   cross-user mis-routing. Set in your shell or VS Code launch env.
+#
+# Intents intentionally absent (may be added later when their transports land):
+# - reach_running_session (telegram-bridge) — use claude-telegram-bridge directly

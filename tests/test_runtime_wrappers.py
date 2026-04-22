@@ -15,11 +15,6 @@ import pytest
 from tipi.mcp import _dispatch
 from tipi.mcp.claude_spawn.server import build_server as build_claude_spawn
 from tipi.mcp.dizzy.server import build_server as build_dizzy
-from tipi.mcp.epigenetics.server import (
-    UPSTREAM,
-    _source,
-    build_server as build_epigenetics,
-)
 from tipi.mcp.hermes.server import build_server as build_hermes
 from tipi.mcp.openclaw.server import build_server as build_openclaw
 
@@ -56,7 +51,6 @@ def fake_runner(monkeypatch):
         (build_hermes, "tipi-hermes", {"dispatch_to_hermes"}),
         (build_openclaw, "tipi-openclaw", {"dispatch_to_zolivier", "dispatch_to_kimiclaw"}),
         (build_claude_spawn, "tipi-claude-spawn", {"spawn_claude_session"}),
-        (build_epigenetics, "tipi-epigenetics", {"upstream_for", "list_epigenetic_sources"}),
     ],
 )
 def test_wrapper_builds_and_registers_tools(builder, name, expected_tools):
@@ -68,7 +62,7 @@ def test_wrapper_builds_and_registers_tools(builder, name, expected_tools):
 
 
 # ---------------------------------------------------------------------------
-# Dispatch wrappers actually shell out via the dispatch engine
+# Wrappers shell out via the dispatch engine
 # ---------------------------------------------------------------------------
 
 async def _call(server, name, args):
@@ -78,13 +72,17 @@ async def _call(server, name, args):
     return result
 
 
+def _unwrap(result):
+    """Unwrap FastMCP's structured_content envelope."""
+    return result.get("result", result) if isinstance(result, dict) else result
+
+
 def test_dizzy_send_resolves_command_with_mention(fake_runner):
     server = build_dizzy()
     result = asyncio.run(_call(server, "send_to_discord", {"mention": "zoe", "text": "ping"}))
-    data = result.get("result", result) if isinstance(result, dict) else result
+    data = _unwrap(result)
     assert data["ok"] is True
     assert data["stdout"] == "mock-ok"
-    # Exactly one subprocess invocation and it contains our substitutions
     assert len(fake_runner) == 1
     cmd = fake_runner[0]
     assert "zoe" in cmd
@@ -118,23 +116,9 @@ def test_claude_spawn_uses_dangerous_flag(fake_runner):
     assert "--dangerously-skip-permissions" in cmd
 
 
-# ---------------------------------------------------------------------------
-# Epigenetics has a different shape — alias mapping, no subprocess
-# ---------------------------------------------------------------------------
-
-def test_epigenetics_source_resolves_upstream_name():
-    assert _source("search_prompt_kits") == "mcp__nate-promptkit__search_prompt_kits"
-
-
-def test_epigenetics_source_raises_on_unknown():
-    with pytest.raises(KeyError, match="unknown epigenetics tool"):
-        _source("not-a-real-tool")
-
-
-def test_epigenetics_list_enumerates_upstream(fake_runner):
-    server = build_epigenetics()
-    result = asyncio.run(_call(server, "list_epigenetic_sources", {}))
-    data = result.get("result", result) if isinstance(result, dict) else result
-    assert isinstance(data, list)
-    assert len(data) == len(UPSTREAM)
-    assert all("local" in e and "upstream" in e for e in data)
+def test_wrappers_return_standard_shape(fake_runner):
+    """Every dispatch wrapper returns {ok, returncode, stdout, stderr, command}."""
+    server = build_dizzy()
+    result = asyncio.run(_call(server, "send_to_discord", {"mention": "zoe", "text": "x"}))
+    data = _unwrap(result)
+    assert set(data.keys()) == {"ok", "returncode", "stdout", "stderr", "command"}

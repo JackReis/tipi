@@ -1,0 +1,37 @@
+{
+  "handoff_freshness": {
+    "newest_file": "claude/mcp-coordination/state/session-handoffs/2026-04-22-session-end-abc123.md",
+    "age_seconds": 312,
+    "count_last_24h": 7
+  },
+  "ob1_sync_status": {
+    "backend": "obn",
+    "last_sync": "2026-04-22T17:45:00Z",
+    "ok": true,
+    "record_count": 12480
+  },
+  "session_lock_state": [
+    {
+      "task_slug": "tipi-trim-phase",
+      "locked_by": "claude-code-cb4b6ff2",
+      "lock_acquired": "2026-04-22T17:30:00Z",
+      "age_minutes": 18
+    }
+  ],
+  "project_memory_entries": {
+    "total": 142,
+    "limit": 300,
+    "per_session": [
+      {
+        "session_id": "cb4b6ff2",
+        "count": 47,
+        "approaching_consolidation": false
+      },
+      {
+        "session_id": "1f9d5d5c",
+        "count": 62,
+        "approaching_consolidation": false
+      }
+    ]
+  }
+}

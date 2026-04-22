@@ -19,9 +19,20 @@ import yaml
 _THIS = Path(__file__).resolve()
 DISPATCH_PATH = _THIS.parent.parent / "contract" / "runtime-dispatch.yaml"
 
-DEFAULT_VAULT_ROOT = os.environ.get(
-    "TIPI_VAULT_ROOT", str(Path.home() / "Documents" / "=notes")
-)
+def _require_vault_root() -> str:
+    """Resolve TIPI_VAULT_ROOT at call time, raise if unset.
+
+    Required — no default. A silent default ties the plugin to one user's
+    layout and routes dispatch to the wrong vault for anyone else. Surface
+    the config error early instead of mis-routing.
+    """
+    value = os.environ.get("TIPI_VAULT_ROOT")
+    if not value:
+        raise DispatchError(
+            "TIPI_VAULT_ROOT environment variable is not set. "
+            "Set it to the absolute path of your vault (e.g. ~/Documents/=notes)."
+        )
+    return value
 
 
 class DispatchError(RuntimeError):
@@ -40,6 +51,21 @@ class DispatchResult:
     @property
     def ok(self) -> bool:
         return self.returncode == 0
+
+
+def dispatch_tool_result(result: DispatchResult) -> dict[str, Any]:
+    """Standard MCP-tool response shape for every dispatch wrapper.
+
+    Centralizing this means changing the wire format is a one-line diff,
+    not a hunt across five wrapper files.
+    """
+    return {
+        "ok": result.ok,
+        "returncode": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "command": result.command,
+    }
 
 
 def load_dispatch(path: Path = DISPATCH_PATH) -> dict[str, Any]:
@@ -90,7 +116,7 @@ def run_intent(
     """
     if runner is None:
         runner = subprocess.run  # resolved at call time — test-patchable
-    substitutions.setdefault("vault_root", DEFAULT_VAULT_ROOT)
+    substitutions.setdefault("vault_root", _require_vault_root())
     config = load_dispatch()
     command = _resolve_command(intent, substitutions, config)
     completed = runner(

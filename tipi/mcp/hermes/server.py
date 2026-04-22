@@ -11,7 +11,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from tipi.mcp._dispatch import run_intent
+from tipi.mcp._dispatch import dispatch_tool_result, run_intent
 
 
 def build_server() -> FastMCP:
@@ -19,18 +19,8 @@ def build_server() -> FastMCP:
 
     @server.tool()
     def dispatch_to_hermes(text: str) -> dict[str, Any]:
-        """Dispatch a one-shot task to the Hermes runtime.
-
-        Wraps `hermes chat -Q -q "<text>"`. Returns the subprocess outcome.
-        """
-        result = run_intent("dispatch_hermes", text=text)
-        return {
-            "ok": result.ok,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "command": result.command,
-        }
+        """Dispatch a one-shot task to the Hermes runtime (hermes chat -Q -q)."""
+        return dispatch_tool_result(run_intent("dispatch_hermes", text=text))
 
     return server
 
