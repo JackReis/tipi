@@ -1,0 +1,109 @@
+"""Tests for the shared dispatch engine."""
+
+from __future__ import annotations
+
+import subprocess
+from dataclasses import dataclass
+
+import pytest
+
+from tipi.mcp._dispatch import (
+    DispatchError,
+    DispatchResult,
+    _resolve_command,
+    load_dispatch,
+    run_intent,
+)
+
+
+@dataclass
+class FakeCompleted:
+    returncode: int = 0
+    stdout: str = ""
+    stderr: str = ""
+
+
+def _fake_runner(**kwargs):
+    def runner(cmd, *, capture_output, text, timeout, check):  # noqa: D401
+        runner.last_cmd = cmd  # type: ignore[attr-defined]
+        return FakeCompleted(**kwargs)
+
+    return runner
+
+
+def test_load_dispatch_reads_yaml_and_has_expected_intents():
+    config = load_dispatch()
+    intents = config["intents"]
+    for expected in (
+        "chat_discord",
+        "dispatch_hermes",
+        "dispatch_zolivier",
+        "dispatch_kimiclaw",
+        "spawn_claude",
+    ):
+        assert expected in intents, f"missing intent: {expected}"
+
+
+def test_resolve_command_substitutes_placeholders():
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "chat_discord",
+        {"vault_root": "/tmp/vault", "slug": "zoe", "text": "hello"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert "--mention" in cmd
+    mention_idx = cmd.index("--mention")
+    assert cmd[mention_idx + 1] == "zoe"
+    assert cmd[-1] == "hello"
+    assert "/tmp/vault/claude/scripts/dizzy.py" in cmd
+
+
+def test_resolve_command_unknown_intent_raises():
+    config = load_dispatch()
+    with pytest.raises(DispatchError, match="unknown intent"):
+        _resolve_command("no_such_intent", {}, config)
+
+
+def test_resolve_command_missing_substitution_raises():
+    config = load_dispatch()
+    with pytest.raises(DispatchError, match="needs substitution"):
+        _resolve_command(
+            "chat_discord",
+            {"vault_root": "/tmp", "slug": "zoe"},  # missing 'text'
+            config,
+        )
+
+
+def test_run_intent_injects_runner_and_returns_result():
+    runner = _fake_runner(returncode=0, stdout="ok", stderr="")
+    result = run_intent(
+        "chat_discord",
+        runner=runner,
+        slug="zoe",
+        text="hello",
+    )
+    assert isinstance(result, DispatchResult)
+    assert result.ok
+    assert result.stdout == "ok"
+    assert result.intent == "chat_discord"
+    assert "zoe" in result.command
+    assert "hello" in result.command
+
+
+def test_run_intent_surfaces_nonzero_exit_via_ok_false():
+    runner = _fake_runner(returncode=1, stdout="", stderr="boom")
+    result = run_intent(
+        "spawn_claude",
+        runner=runner,
+        text="test prompt",
+    )
+    assert not result.ok
+    assert result.returncode == 1
+    assert result.stderr == "boom"
+
+
+def test_run_intent_unknown_intent_raises_before_subprocess():
+    runner = _fake_runner()
+    with pytest.raises(DispatchError):
+        run_intent("frobnicate", runner=runner, text="x")
