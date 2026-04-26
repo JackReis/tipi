@@ -1,4 +1,4 @@
-"""OpenClaw MCP wrapper — dispatch to Zolivier (local) or KimiClaw (cloud)."""
+"""OpenClaw MCP wrapper — dispatch to OLIVIER_MBP (local) or KimiClaw (cloud)."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ def build_server() -> FastMCP:
     server = FastMCP("tipi-openclaw")
 
     @server.tool()
-    def dispatch_to_zolivier(text: str) -> dict[str, Any]:
-        """Dispatch to Zolivier (local OpenClaw gateway, Discord surface Zoe)."""
-        return dispatch_tool_result(run_intent("dispatch_zolivier", text=text))
+    def dispatch_to_olivier_mbp(text: str) -> dict[str, Any]:
+        """Dispatch to OLIVIER_MBP (local OpenClaw gateway on MacBook Pro, Discord surface Zoe)."""
+        return dispatch_tool_result(run_intent("dispatch_olivier_mbp", text=text))
 
     @server.tool()
     def dispatch_to_kimiclaw(text: str) -> dict[str, Any]:

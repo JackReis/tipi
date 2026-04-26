@@ -25,7 +25,7 @@ tipi/
     consciousness/   # body/mind/spirit readers — stable interface seam
     dizzy/           # Discord dispatch wrapper
     hermes/          # Hermes runtime dispatch wrapper
-    openclaw/        # OpenClaw (Zolivier / KimiClaw) runtime dispatch wrapper
+    openclaw/        # OpenClaw (OLIVIER_MBP / KimiClaw) runtime dispatch wrapper
     claude_spawn/    # Fresh Claude Code session dispatch
     epigenetics/     # Nate's PromptKit wrapper
   contract/          # schemas, agent contract, runtime-dispatch.yaml

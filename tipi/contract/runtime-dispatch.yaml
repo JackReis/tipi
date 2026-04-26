@@ -35,9 +35,9 @@ intents:
       - "-q"
       - "{text}"
 
-  dispatch_zolivier:
-    description: Dispatch task to Zolivier (local OpenClaw gateway)
-    targets: [zolivier]
+  dispatch_olivier_mbp:
+    description: Dispatch task to OLIVIER_MBP (local OpenClaw gateway on MacBook Pro)
+    targets: [olivier_mbp]
     transport: openclaw
     command:
       - openclaw

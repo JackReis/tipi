@@ -49,7 +49,7 @@ def fake_runner(monkeypatch):
     [
         (build_dizzy, "tipi-dizzy", {"send_to_discord"}),
         (build_hermes, "tipi-hermes", {"dispatch_to_hermes"}),
-        (build_openclaw, "tipi-openclaw", {"dispatch_to_zolivier", "dispatch_to_kimiclaw"}),
+        (build_openclaw, "tipi-openclaw", {"dispatch_to_olivier_mbp", "dispatch_to_kimiclaw"}),
         (build_claude_spawn, "tipi-claude-spawn", {"spawn_claude_session"}),
     ],
 )
@@ -98,9 +98,9 @@ def test_hermes_dispatch_builds_hermes_command(fake_runner):
     assert "hello hermes" in cmd
 
 
-def test_openclaw_zolivier_and_kimiclaw_differ(fake_runner):
+def test_openclaw_olivier_mbp_and_kimiclaw_differ(fake_runner):
     server = build_openclaw()
-    asyncio.run(_call(server, "dispatch_to_zolivier", {"text": "local"}))
+    asyncio.run(_call(server, "dispatch_to_olivier_mbp", {"text": "local"}))
     asyncio.run(_call(server, "dispatch_to_kimiclaw", {"text": "cloud"}))
     assert len(fake_runner) == 2
     local_cmd, cloud_cmd = fake_runner

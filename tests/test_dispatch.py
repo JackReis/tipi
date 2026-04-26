@@ -37,7 +37,7 @@ def test_load_dispatch_reads_yaml_and_has_expected_intents():
     for expected in (
         "chat_discord",
         "dispatch_hermes",
-        "dispatch_zolivier",
+        "dispatch_olivier_mbp",
         "dispatch_kimiclaw",
         "spawn_claude",
     ):
