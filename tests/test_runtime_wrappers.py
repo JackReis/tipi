@@ -47,7 +47,7 @@ def fake_runner(monkeypatch):
 @pytest.mark.parametrize(
     "builder, name, expected_tools",
     [
-        (build_dizzy, "tipi-dizzy", {"send_to_discord"}),
+        (build_dizzy, "tipi-dizzy", {"send_to_discord", "send_to_discord_as_codex"}),
         (build_hermes, "tipi-hermes", {"dispatch_to_hermes"}),
         (build_openclaw, "tipi-openclaw", {"dispatch_to_olivier_mbp", "dispatch_to_kimiclaw"}),
         (build_claude_spawn, "tipi-claude-spawn", {"spawn_claude_session"}),
@@ -88,6 +88,24 @@ def test_dizzy_send_resolves_command_with_mention(fake_runner):
     assert "zoe" in cmd
     assert "ping" in cmd
     assert "--mention" in cmd
+
+
+def test_dizzy_codex_send_uses_codex_lane(fake_runner):
+    server = build_dizzy()
+    result = asyncio.run(
+        _call(server, "send_to_discord_as_codex", {"mention": "blue", "text": "ping codex"})
+    )
+    data = _unwrap(result)
+    assert data["ok"] is True
+    assert data["stdout"] == "mock-ok"
+    assert len(fake_runner) == 1
+    cmd = fake_runner[0]
+    assert "blue" in cmd
+    assert "ping codex" in cmd
+    assert "--from" in cmd
+    from_idx = cmd.index("--from")
+    assert cmd[from_idx + 1] == "codex"
+    assert "--tldr" in cmd
 
 
 def test_hermes_dispatch_builds_hermes_command(fake_runner):

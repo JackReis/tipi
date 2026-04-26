@@ -24,6 +24,57 @@ intents:
       - "{slug}"
       - "{text}"
 
+  chat_discord_as_codex:
+    description: Fleet chatter via Discord surface (Codex / Bean / Blue)
+    targets: [codex, bean, blue]
+    transport: dizzy
+    command:
+      - python3
+      - "{vault_root}/claude/scripts/dizzy.py"
+      - "--channel"
+      - "bots"
+      - "send"
+      - "--from"
+      - "codex"
+      - "--mention"
+      - "{slug}"
+      - "--tldr"
+      - "{text}"
+
+  chat_discord_as_neo:
+    description: Fleet chatter via Discord surfaces (Neo bot lane)
+    targets: [wings, zoe, mara, neo, gemini, gemini-cli]
+    transport: dizzy
+    command:
+      - python3
+      - "{vault_root}/claude/scripts/dizzy.py"
+      - "--channel"
+      - "bots"
+      - "send"
+      - "--from"
+      - "neo"
+      - "--mention"
+      - "{slug}"
+      - "--tldr"
+      - "{text}"
+
+  chat_discord_as_pt:
+    description: Fleet chatter via Discord surfaces (PT bot lane)
+    targets: [wings, zoe, mara, neo, gemini, gemini-cli]
+    transport: dizzy
+    command:
+      - python3
+      - "{vault_root}/claude/scripts/dizzy.py"
+      - "--channel"
+      - "bots"
+      - "send"
+      - "--from"
+      - "pt"
+      - "--mention"
+      - "{slug}"
+      - "--tldr"
+      - "{text}"
+
   dispatch_hermes:
     description: Dispatch task to Hermes (local Nous runtime, MacBook Pro)
     targets: [hermes]

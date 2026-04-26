@@ -23,7 +23,7 @@ Per the three-layer consciousness ADR (lives in the vault at `docs/architecture/
 tipi/
   mcp/
     consciousness/   # body/mind/spirit readers — stable interface seam
-    dizzy/           # Discord dispatch wrapper
+    dizzy/           # Discord dispatch wrapper (Wings / Zoe / Codex lanes)
     hermes/          # Hermes runtime dispatch wrapper
     openclaw/        # OpenClaw (OLIVIER_MBP / KimiClaw) runtime dispatch wrapper
     claude_spawn/    # Fresh Claude Code session dispatch

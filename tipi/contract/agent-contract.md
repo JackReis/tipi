@@ -32,7 +32,7 @@ When an agent does call `mcp__open-brain__capture_thought` or similar, include:
 
 - `source` — slug of the agent/session
 - `task_id` — current task or arc
-- `agent` — runtime name (hermes / olivier_mbp / kimiclaw / claude)
+- `agent` — runtime name (hermes / olivier_mbp / kimiclaw / codex / claude)
 - `layer` — always `mind` from agent-level writes
 - `timestamp` — ISO 8601
 
