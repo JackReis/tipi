@@ -29,7 +29,12 @@ from tipi.mcp.consciousness.health import (
 from tipi.mcp.consciousness.interface import (
     Belief,
     BodyState,
+    Check,
+    Disputation,
     MindRecord,
+    Obiectio,
+    Responsio,
+    SedContra,
 )
 
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "contract"
@@ -42,6 +47,14 @@ ROOTS: dict[str, type] = {
     "Belief": Belief,
     "MindRecord": MindRecord,
     "BodyState": BodyState,
+    # Spirit-layer dialectic vocabulary — the producer-side discipline that
+    # gives Beliefs enough specificity to be measured. See:
+    # ~/Documents/=notes/docs/conventions/dialectic-vocabulary.md
+    "Check": Check,
+    "Obiectio": Obiectio,
+    "SedContra": SedContra,
+    "Responsio": Responsio,
+    "Disputation": Disputation,
     # Health (shared cross-enclosure fields)
     "HandoffFreshness": HandoffFreshness,
     "OB1SyncStatus": OB1SyncStatus,

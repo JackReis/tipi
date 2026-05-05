@@ -1,10 +1,20 @@
 {
   "$defs": {
     "Belief": {
-      "description": "A durable, subjectively-weighted claim in the belief ledger.\n\nBeliefs are derived \u2014 never raw captures. A write to spirit implies a\nreflection pass over mind.",
+      "description": "A durable, subjectively-weighted claim in the belief ledger.\n\nBeliefs are derived \u2014 never raw captures. A write to spirit implies a\nreflection pass over mind. Per the synthesis at the top of this section:\nan unexamined claim does not exist; a Belief is brought into existence\nby the act of grounding it.\n\nOptional dialectic fields (verifier, falsifier, disputation, confidence,\naletheia_sha256) carry the producer-side discipline. They are optional\nfor backwards-compat with existing belief data but should be populated\nfor any belief that participates in cross-agent reconciliation.",
       "properties": {
+        "aletheia_sha256": {
+          "default": "",
+          "title": "Aletheia Sha256",
+          "type": "string"
+        },
         "claim": {
           "title": "Claim",
+          "type": "string"
+        },
+        "confidence": {
+          "default": "",
+          "title": "Confidence",
           "type": "string"
         },
         "derived_from": {
@@ -14,6 +24,28 @@
           },
           "title": "Derived From",
           "type": "array"
+        },
+        "disputation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Disputation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "falsifier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Check"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "id": {
           "title": "Id",
@@ -27,6 +59,17 @@
           "default": "",
           "title": "Timestamp",
           "type": "string"
+        },
+        "verifier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Check"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -61,6 +104,86 @@
         }
       },
       "title": "BodyState",
+      "type": "object"
+    },
+    "Check": {
+      "description": "A runnable verifier or falsifier command for a Belief.\n\nMirrors peer-grill claims.schema.json: cmd is a shell command,\nexpect is a comparator string (literal | >N | matches:/RE/ | contains: |\nsha256:HEX | lines:OP). Deterministic, sandbox-friendly, retryable.",
+      "properties": {
+        "cmd": {
+          "title": "Cmd",
+          "type": "string"
+        },
+        "expect": {
+          "title": "Expect",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 10,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cmd",
+        "expect"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "Disputation": {
+      "description": "Scholastic quaestio-form structured disputation for high-stakes beliefs.\n\nUse only when a belief's stakes earn the structural overhead. Everyday\nbeliefs ratify with verifier + ALETHEIA stamp; contested ones get the\nfull quaestio / obiectiones / sed contra / respondeo / responsiones\ntreatment, with a sha256 attestation when both peers ratify the merged\nstatement.",
+      "properties": {
+        "aletheia_sha256": {
+          "default": "",
+          "title": "Aletheia Sha256",
+          "type": "string"
+        },
+        "obiectiones": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Obiectio"
+          },
+          "title": "Obiectiones",
+          "type": "array"
+        },
+        "quaestio": {
+          "title": "Quaestio",
+          "type": "string"
+        },
+        "respondeo": {
+          "default": "",
+          "title": "Respondeo",
+          "type": "string"
+        },
+        "responsiones": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Responsio"
+          },
+          "title": "Responsiones",
+          "type": "array"
+        },
+        "sed_contra": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SedContra"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "quaestio"
+      ],
+      "title": "Disputation",
       "type": "object"
     },
     "HandoffFreshness": {
@@ -187,6 +310,35 @@
       "title": "OB1SyncStatus",
       "type": "object"
     },
+    "Obiectio": {
+      "description": "A numbered objection raised against a Belief's quaestio.\n\nLatin disputation form per scholastic tradition (Aquinas Summa I-I).\nEach obiectio cites a source the asker can verify.",
+      "properties": {
+        "argument": {
+          "title": "Argument",
+          "type": "string"
+        },
+        "n": {
+          "title": "N",
+          "type": "integer"
+        },
+        "raised_by": {
+          "default": "",
+          "title": "Raised By",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "n",
+        "argument"
+      ],
+      "title": "Obiectio",
+      "type": "object"
+    },
     "PerSessionMemoryEntry": {
       "description": "Per-session breakdown of the vault-native project_memory.json.",
       "properties": {
@@ -235,6 +387,49 @@
         "limit"
       ],
       "title": "ProjectMemoryEntries",
+      "type": "object"
+    },
+    "Responsio": {
+      "description": "A reply to a specific obiectio number, completing the disputation.",
+      "properties": {
+        "reply": {
+          "title": "Reply",
+          "type": "string"
+        },
+        "to": {
+          "title": "To",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "to",
+        "reply"
+      ],
+      "title": "Responsio",
+      "type": "object"
+    },
+    "SedContra": {
+      "description": "The single strongest counter to the obiectiones.\n\nAquinas reserves this for the most authoritative source. Only one\nsed contra per disputation, by convention.",
+      "properties": {
+        "argument": {
+          "title": "Argument",
+          "type": "string"
+        },
+        "raised_by": {
+          "default": "",
+          "title": "Raised By",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "argument"
+      ],
+      "title": "SedContra",
       "type": "object"
     },
     "SessionLock": {

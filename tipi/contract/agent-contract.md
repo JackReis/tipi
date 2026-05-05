@@ -42,6 +42,23 @@ When an agent does call `mcp__open-brain__capture_thought` or similar, include:
 - ❌ Unscoped writes — no `source` / no `task_id`
 - ❌ Writes to spirit without a reflection pass — spirit entries are derived, never raw
 - ❌ Writes to body/mind/spirit *through* tipi — tipi is a view; use the proper channel
+- ❌ Beliefs without producer-side discipline — a `Belief` without `verifier`, `confidence`, or (for contested claims) a `disputation` block is theatre. *An unexamined claim does not exist.*
+
+## Belief discipline — dialectic vocabulary
+
+The `Belief` dataclass carries optional dialectic fields for the producer-side discipline. Beliefs are derived (never raw); the dialectic fields are what give a belief enough specificity to be **measured**.
+
+| Field | Purpose | When to populate |
+|---|---|---|
+| `confidence` | `high` / `medium` / `low` | Always, for any belief crossing session boundaries |
+| `verifier` | Runnable `Check` (cmd + expect comparator) | Empirical beliefs whose truth is checkable from filesystem / state |
+| `falsifier` | Runnable `Check` that demonstrates the belief is FALSE if it succeeds | Beliefs that would have observable counter-evidence if wrong |
+| `disputation` | Scholastic *quaestio* form (`Disputation` type) | High-stakes contested beliefs where the dialectic is load-bearing |
+| `aletheia_sha256` | sha256 attestation of the merged statement | Set only when both peers ratify (ἀλήθεια stamp) |
+
+Canonical doctrine: `~/Documents/=notes/docs/conventions/dialectic-vocabulary.md`. **Synthesis:** an unexamined claim does not exist — it's superposition the observer can't collapse. The producer-side discipline gives Beliefs enough specificity to be measured by a downstream reader (or by a peer in `peer-grill` reconciliation).
+
+Sibling consumer-side doctrine: `~/Documents/=notes/docs/conventions/agent-observer-principle.md`. Both rungs collapse to one principle when pushed: a claim is brought into existence by the act of grounding it.
 
 ## Discovery
 
