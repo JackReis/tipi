@@ -47,6 +47,11 @@
           ],
           "default": null
         },
+        "fingerprint": {
+          "default": "",
+          "title": "Fingerprint",
+          "type": "string"
+        },
         "id": {
           "title": "Id",
           "type": "string"

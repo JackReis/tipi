@@ -122,6 +122,13 @@ class Belief:
     falsifier: Check | None = None
     disputation: Disputation | None = None
     aletheia_sha256: str = ""  # sha256(canonical statement) once ratified
+    # Greek-alphabet visual fingerprint, auto-derived from `id` (NOT authored).
+    # Layered design: Latin `id` is the load-bearing identifier (filesystem-safe,
+    # collision-checked); Greek fingerprint is a display-layer handle that
+    # carries the philosophical register without incurring Unicode hostility.
+    # Computed as sha256(NFC(id))[:4 bytes] mod 24 → Greek alphabet letters.
+    # Reference impl: ~/.claude/skills/peer-grill/scripts/peer_grill_fingerprint.py
+    fingerprint: str = ""  # e.g. "τκφε" — empty if not yet computed
 
 
 @runtime_checkable
