@@ -42,6 +42,11 @@ When an agent does call `mcp__open-brain__capture_thought` or similar, include:
 - ❌ Unscoped writes — no `source` / no `task_id`
 - ❌ Writes to spirit without a reflection pass — spirit entries are derived, never raw
 - ❌ Writes to body/mind/spirit *through* tipi — tipi is a view; use the proper channel
+- ❌ Tipi spawning runtimes or injecting cross-agent protocols (e.g. peer-grill) into them — tipi is not a process supervisor and must not carry protocol bodies. Tipi MAY orchestrate wake-signals, rooms, and dropbox paths; runtimes carry the protocol themselves (CC: on-disk skill; API-direct: system-prompt bake referencing the canonical vault doc).
+
+## Cross-agent protocols
+
+Cross-agent protocols (e.g. `peer-grill` — strict file-only multi-agent reconciliation) are NOT carried by tipi. Tipi may surface the canonical protocol text as a read-only resource, but the runtime invoking the protocol is responsible for knowing how to follow it. Canonical SoT for peer-grill: `~/Documents/=notes/docs/conventions/peer-grill-protocol.md`.
 
 ## Discovery
 
