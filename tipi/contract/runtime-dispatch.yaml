@@ -6,8 +6,21 @@
 # command is a list (argv form). Placeholders: {slug}, {text}, and any
 # other per-intent vars are substituted via str.format_map at dispatch
 # time — wrappers validate required keys before invoking subprocess.
+#
+# Version log:
+# - v1 (initial) — chat_discord, dispatch_hermes, dispatch_olivier_mbp,
+#   dispatch_kimiclaw, spawn_claude
+# - v2 (2026-05-13) — added dispatch_arbiter for the new Arbiter
+#   orchestrator (ADR-2026-05-13). Annotated dispatch_hermes +
+#   chat_discord_as_codex with their new positioning under Arbiter
+#   topology (Hermes = CC deployment lane; Codex = worker tier).
+# - v3 (2026-05-22) — added dispatch_rbitr (Rbitr orchestrator).
+#   Rbitr is the evolved Arbiter implementation (SQLite-state + n8n
+#   event bus + host-side sidecar worker spawner). dispatch_arbiter
+#   retained for backward compatibility; new code should prefer
+#   dispatch_rbitr.
 
-version: 1
+version: 3
 
 intents:
   chat_discord:
@@ -25,6 +38,10 @@ intents:
       - "{text}"
 
   chat_discord_as_codex:
+    # v2 (2026-05-13): still valid as a broadcast intent. Codex is now a
+    # worker tier under the Arbiter topology — Arbiter dispatches coding
+    # work to Codex via spawn_claude-equivalent paths; this intent remains
+    # the Codex-narrating-on-Discord lane (not a dispatch lane).
     description: Fleet chatter via Discord surface (Codex / Bean / Blue)
     targets: [codex, bean, blue]
     transport: dizzy
@@ -76,6 +93,11 @@ intents:
       - "{text}"
 
   dispatch_hermes:
+    # v2 (2026-05-13): still valid; Hermes now executes the CC deployment
+    # lane under Arbiter topology — it spawns Claude Code workers when
+    # Arbiter dispatches coding work. Hermes does NOT classify routing
+    # (n8n owns that). See [[fleet-tipi-identities]] v2.0.0 for the
+    # updated Hermes role definition.
     description: Dispatch task to Hermes (local Nous runtime, MacBook Pro)
     targets: [hermes]
     transport: hermes-cli
@@ -114,10 +136,92 @@ intents:
       - "--dangerously-skip-permissions"
       - "{text}"
 
+  dispatch_arbiter:
+    # v2 (2026-05-13): NEW. Arbiter is the orchestrator under ADR-2026-05-13
+    # (supersedes ADR-2026-03-29). This intent POSTs a dispatch_envelope
+    # to the local Arbiter HTTP server (:8765) — Symphony-pattern
+    # isolated-run execution. Payload schema:
+    #   docs/architecture/inter-session-protocol-v2.md#2A
+    #   (Sinew-wrapping optional; bare dispatch_envelope also accepted)
+    # Auth: ARBITER_ADMIN_TOKEN env var (SOPS-managed in production).
+    # Idempotent on linear_id. The inline python is intentional —
+    # avoids creating a cross-repo shim dependency (this intent
+    # touches tipi only; no =notes wrapper required).
+    description: Dispatch task to Arbiter HTTP orchestrator (Symphony-pattern isolated-run execution)
+    targets: [arbiter]
+    transport: arbiter-http
+    command:
+      - python3
+      - "-c"
+      - |
+        import os, sys, json, urllib.request, urllib.error
+        body = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
+        try:
+            json.loads(body)
+        except Exception as e:
+            print(f"ERROR: payload is not valid JSON: {e}", file=sys.stderr); sys.exit(2)
+        token = os.environ.get("ARBITER_ADMIN_TOKEN", "")
+        if not token:
+            print("ERROR: ARBITER_ADMIN_TOKEN not set in env", file=sys.stderr); sys.exit(3)
+        req = urllib.request.Request(
+            "http://127.0.0.1:8765/dispatch",
+            data=body.encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            print(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            print(f"ERROR: Arbiter returned {e.code}: {e.read().decode('utf-8', errors='replace')}", file=sys.stderr); sys.exit(4)
+      - "{text}"
+
+  dispatch_rbitr:
+    # v3 (2026-05-22): NEW. Rbitr is the evolved Arbiter implementation.
+    # Same HTTP contract as dispatch_arbiter but pinned to the rbitr
+    # identity so callers can migrate independently. Endpoint, auth, and
+    # payload schema are identical — only the intent name changes.
+    description: Dispatch task to Rbitr HTTP orchestrator (evolved Arbiter — SQLite + n8n + sidecar worker spawner)
+    targets: [rbitr]
+    transport: rbitr-http
+    command:
+      - python3
+      - "-c"
+      - |
+        import os, sys, json, urllib.request, urllib.error
+        body = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
+        try:
+            json.loads(body)
+        except Exception as e:
+            print(f"ERROR: payload is not valid JSON: {e}", file=sys.stderr); sys.exit(2)
+        token = os.environ.get("ARBITER_ADMIN_TOKEN", "")
+        if not token:
+            print("ERROR: ARBITER_ADMIN_TOKEN not set in env", file=sys.stderr); sys.exit(3)
+        req = urllib.request.Request(
+            "http://127.0.0.1:8765/dispatch",
+            data=body.encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            print(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            print(f"ERROR: Rbitr returned {e.code}: {e.read().decode('utf-8', errors='replace')}", file=sys.stderr); sys.exit(4)
+      - "{text}"
+
 # Environment variables the wrappers expect:
 # - TIPI_VAULT_ROOT: absolute path to the =notes vault (for dizzy.py location).
 #   REQUIRED. No default — run_intent raises if unset to prevent silent
 #   cross-user mis-routing. Set in your shell or VS Code launch env.
+# - ARBITER_ADMIN_TOKEN: bearer token for the Arbiter HTTP server. REQUIRED
+#   for `dispatch_arbiter`. SOPS-managed in production (loaded by Arbiter's
+#   bootstrap.sh into the container env; for direct host invocation, source
+#   via `sops exec-env ~/.secrets/llm-providers.env -- ...`).
 #
 # Intents intentionally absent (may be added later when their transports land):
 # - reach_running_session (telegram-bridge) — use claude-telegram-bridge directly
