@@ -36,6 +36,13 @@ tipi/
 
 `tipi/contract/consciousness-interface.py` (Python Protocol) is the source of truth. The schema published as JSON Schema (future Task 9.2 in the plan) is generated from it.
 
+## Fleet Integration & Rbitr
+
+This portable core provides the authoritative `runtime-dispatch.yaml` mapping used by the fleet to issue dispatch intents (`dispatch_rbitr`) directly to the local `rbitr` Symphony orchestrator on port `8765`.
+
+For detailed architecture, layout, and dataflow integration details, see:
+- [docs/RBITR-INTEGRATION.md](docs/RBITR-INTEGRATION.md)
+
 ## Status
 
 Scaffolding underway. See `docs/plans/2026-04-21-tipi-vs-tipi.md` in the vault.
