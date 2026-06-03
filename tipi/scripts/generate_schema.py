@@ -12,6 +12,7 @@ Writes: tipi/contract/consciousness-interface.json
 
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,12 @@ ROOTS: dict[str, type] = {
 }
 
 
+def _ensure_dataclass_description(schema: dict[str, Any], tp: type) -> None:
+    """Keep schema descriptions stable across Pydantic minor versions."""
+    if "description" not in schema and tp.__doc__:
+        schema["description"] = inspect.cleandoc(tp.__doc__)
+
+
 def build_schema() -> dict[str, Any]:
     """Build the JSON Schema document with all ROOTS as named definitions."""
     definitions: dict[str, Any] = {}
@@ -73,7 +80,12 @@ def build_schema() -> dict[str, Any]:
         # pydantic nests generated refs under $defs inside each root; hoist them.
         inner_defs = schema.pop("$defs", {})
         for k, v in inner_defs.items():
+            if isinstance(v, dict):
+                inner_type = ROOTS.get(k)
+                if inner_type is not None:
+                    _ensure_dataclass_description(v, inner_type)
             definitions.setdefault(k, v)
+        _ensure_dataclass_description(schema, tp)
         definitions[name] = schema
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
