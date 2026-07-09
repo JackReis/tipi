@@ -42,6 +42,9 @@ intents:
     # worker tier under the Arbiter topology — Arbiter dispatches coding
     # work to Codex via spawn_claude-equivalent paths; this intent remains
     # the Codex-narrating-on-Discord lane (not a dispatch lane).
+    # v3 (2026-05-22): positioning unchanged under Rbitr (evolved Arbiter).
+    # Rbitr dispatches coding work to Codex via the same spawn_claude-equivalent
+    # paths; this intent remains the Codex-narrating-on-Discord lane.
     description: Fleet chatter via Discord surface (Codex / Bean / Blue)
     targets: [codex, bean, blue]
     transport: dizzy
@@ -98,6 +101,9 @@ intents:
     # Arbiter dispatches coding work. Hermes does NOT classify routing
     # (n8n owns that). See [[fleet-tipi-identities]] v2.0.0 for the
     # updated Hermes role definition.
+    # v3 (2026-05-22): positioning unchanged under Rbitr (evolved Arbiter).
+    # Hermes still executes the CC deployment lane; Rbitr replaces Arbiter
+    # as the orchestrator that dispatches coding work to Hermes.
     description: Dispatch task to Hermes (local Nous runtime, MacBook Pro)
     targets: [hermes]
     transport: hermes-cli

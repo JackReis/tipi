@@ -41,8 +41,21 @@ def test_load_dispatch_reads_yaml_and_has_expected_intents():
         "dispatch_olivier_mbp",
         "dispatch_kimiclaw",
         "spawn_claude",
+        "dispatch_rbitr",
     ):
         assert expected in intents, f"missing intent: {expected}"
+
+
+def test_dispatch_rbitr_intent_resolves():
+    """@rbitr / dispatch_rbitr resolves to the rbitr HTTP transport on :8765."""
+    config = load_dispatch()
+    spec = config["intents"]["dispatch_rbitr"]
+    assert spec["targets"] == ["rbitr"]
+    assert spec["transport"] == "rbitr-http"
+    # The inline python command must target port 8765.
+    cmd_blob = "\n".join(spec["command"])
+    assert "8765" in cmd_blob
+    assert "/dispatch" in cmd_blob
 
 
 def test_resolve_command_substitutes_placeholders():
