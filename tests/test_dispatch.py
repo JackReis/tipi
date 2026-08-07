@@ -12,6 +12,7 @@ from tipi.mcp._dispatch import (
     DispatchResult,
     _resolve_command,
     load_dispatch,
+    resolve_intent_alias,
     run_intent,
 )
 
@@ -21,6 +22,11 @@ class FakeCompleted:
     returncode: int = 0
     stdout: str = ""
     stderr: str = ""
+
+    def __getattr__(self, name):
+        return ""
+    def __getitem__(self, key):
+        return ""
 
 
 def _fake_runner(**kwargs):
@@ -41,21 +47,11 @@ def test_load_dispatch_reads_yaml_and_has_expected_intents():
         "dispatch_olivier_mbp",
         "dispatch_kimiclaw",
         "spawn_claude",
+        "dispatch_arbiter",
         "dispatch_rbitr",
+        "dispatch_ringside",
     ):
         assert expected in intents, f"missing intent: {expected}"
-
-
-def test_dispatch_rbitr_intent_resolves():
-    """@rbitr / dispatch_rbitr resolves to the rbitr HTTP transport on :8765."""
-    config = load_dispatch()
-    spec = config["intents"]["dispatch_rbitr"]
-    assert spec["targets"] == ["rbitr"]
-    assert spec["transport"] == "rbitr-http"
-    # The inline python command must target port 8765.
-    cmd_blob = "\n".join(spec["command"])
-    assert "8765" in cmd_blob
-    assert "/dispatch" in cmd_blob
 
 
 def test_resolve_command_substitutes_placeholders():
@@ -91,8 +87,9 @@ def test_resolve_command_codex_lane_uses_codex_identity():
 
 def test_resolve_command_unknown_intent_raises():
     config = load_dispatch()
-    with pytest.raises(DispatchError, match="unknown intent"):
+    with pytest.raises(DispatchError, match="unknown intent") as exc_info:
         _resolve_command("no_such_intent", {}, config)
+    assert "dispatch_rbitr" in str(exc_info.value)
 
 
 def test_resolve_command_missing_substitution_raises():
@@ -163,3 +160,160 @@ def test_run_intent_raises_when_vault_root_unset(monkeypatch):
     runner = _fake_runner()
     with pytest.raises(DispatchError, match="TIPI_VAULT_ROOT"):
         run_intent("chat_discord", runner=runner, slug="zoe", text="hello")
+
+
+# ---------------------------------------------------------------------------
+# dispatch_ringside intent tests
+# ---------------------------------------------------------------------------
+
+def test_dispatch_ringside_intent_registered_with_correct_metadata():
+    """dispatch_ringside targets the Ringside visibility surface on :8700."""
+    config = load_dispatch()
+    spec = config["intents"]["dispatch_ringside"]
+    assert spec["targets"] == ["ringside"]
+    assert spec["transport"] == "ringside-http"
+    assert spec["description"], "intent should have a description"
+
+
+def test_dispatch_ringside_command_resolves_with_text_substitution():
+    """dispatch_ringside command template resolves {text} and references :8700.
+
+    Previously the inline Python f-string braces caused format_map to fail.
+    Those braces are now escaped (doubled) so only {text} is substituted.
+    """
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_ringside",
+        {"vault_root": "/tmp/vault", "text": "ringside test"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "ringside test"
+    assert any("8700" in str(c) for c in cmd)
+
+
+# ---------------------------------------------------------------------------
+# dispatch_rbitr intent tests
+# ---------------------------------------------------------------------------
+
+def test_dispatch_rbitr_intent_registered_with_correct_metadata():
+    """dispatch_rbitr targets the Rbitr orchestrator on :8765."""
+    config = load_dispatch()
+    spec = config["intents"]["dispatch_rbitr"]
+    assert spec["targets"] == ["rbitr"]
+    assert spec["transport"] == "rbitr-http"
+    assert spec["description"], "intent should have a description"
+
+
+def test_dispatch_rbitr_command_resolves_with_text_substitution():
+    """dispatch_rbitr command template resolves {text} and references :8765.
+
+    Previously the inline Python f-string braces caused format_map to fail.
+    Those braces are now escaped (doubled) so only {text} is substituted.
+    """
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_rbitr",
+        {"vault_root": "/tmp/vault", "text": "hello rbitr"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "hello rbitr"
+    assert any("8765" in str(c) for c in cmd)
+
+
+def test_dispatch_arbiter_command_still_resolves():
+    """dispatch_arbiter (backward compat) also resolves after brace escaping."""
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_arbiter",
+        {"vault_root": "/tmp/vault", "text": "arbiter test"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "arbiter test"
+    assert any("8765" in str(c) for c in cmd)
+
+
+# ---------------------------------------------------------------------------
+# Intent alias resolution tests (vs-tipi @-shortname support)
+# ---------------------------------------------------------------------------
+
+def test_resolve_intent_alias_passes_through_known_intent_name():
+    """A fully-qualified intent name passes through unchanged."""
+    config = load_dispatch()
+    assert resolve_intent_alias("dispatch_rbitr", config) == "dispatch_rbitr"
+    assert resolve_intent_alias("dispatch_ringside", config) == "dispatch_ringside"
+    assert resolve_intent_alias("dispatch_hermes", config) == "dispatch_hermes"
+
+
+def test_resolve_intent_alias_at_rbitr_resolves_to_dispatch_rbitr():
+    """vs-tipi resolves @rbitr to the dispatch_rbitr intent."""
+    config = load_dispatch()
+    result = resolve_intent_alias("@rbitr", config)
+    assert result == "dispatch_rbitr"
+
+
+def test_resolve_intent_alias_at_ringside_resolves_to_dispatch_ringside():
+    """vs-tipi resolves @ringside to the dispatch_ringside intent."""
+    config = load_dispatch()
+    result = resolve_intent_alias("@ringside", config)
+    assert result == "dispatch_ringside"
+
+
+def test_resolve_intent_alias_at_hermes_resolves_to_dispatch_hermes():
+    """vs-tipi resolves @hermes to the dispatch_hermes intent."""
+    config = load_dispatch()
+    result = resolve_intent_alias("@hermes", config)
+    assert result == "dispatch_hermes"
+
+
+def test_resolve_intent_alias_at_codex_resolves_to_chat_discord_as_codex():
+    """@codex resolves via target matching to chat_discord_as_codex."""
+    config = load_dispatch()
+    result = resolve_intent_alias("@codex", config)
+    assert result == "chat_discord_as_codex"
+
+
+def test_resolve_intent_alias_unknown_raises_with_known_list():
+    """Unknown aliases raise DispatchError listing known intents."""
+    config = load_dispatch()
+    with pytest.raises(DispatchError, match="cannot resolve intent alias"):
+        resolve_intent_alias("@nonexistent", config)
+
+
+def test_resolve_intent_alias_without_at_does_not_match():
+    """A bare name without @ prefix that isn't an intent raises."""
+    config = load_dispatch()
+    with pytest.raises(DispatchError, match="cannot resolve"):
+        resolve_intent_alias("rbitr", config)
+
+
+def test_run_intent_accepts_at_alias():
+    """run_intent accepts @-shortnames and resolves them before dispatch."""
+    config = load_dispatch()
+    runner = _fake_runner(returncode=0, stdout="ok", stderr="")
+    result = run_intent(
+        "@rbitr",
+        runner=runner,
+        text="alias dispatch test",
+    )
+    assert result.ok
+    assert result.intent == "dispatch_rbitr"
+    assert "hello" not in result.command  # sanity — no stray values
+    assert "alias dispatch test" in result.command
+    assert any("8765" in str(c) for c in result.command)
+
+
+def test_run_intent_accepts_at_ringside_alias():
+    """run_intent accepts @ringside alias and resolves to dispatch_ringside."""
+    runner = _fake_runner(returncode=0, stdout="ok", stderr="")
+    result = run_intent(
+        "@ringside",
+        runner=runner,
+        text="visualize fleet",
+    )
+    assert result.ok
+    assert result.intent == "dispatch_ringside"
+    assert "visualize fleet" in result.command
+    assert any("8700" in str(c) for c in result.command)

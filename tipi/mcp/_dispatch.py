@@ -19,6 +19,7 @@ import yaml
 _THIS = Path(__file__).resolve()
 DISPATCH_PATH = _THIS.parent.parent / "contract" / "runtime-dispatch.yaml"
 
+
 def _require_vault_root() -> str:
     """Resolve TIPI_VAULT_ROOT at call time, raise if unset.
 
@@ -75,6 +76,60 @@ def load_dispatch(path: Path = DISPATCH_PATH) -> dict[str, Any]:
     return yaml.safe_load(path.read_text())
 
 
+def resolve_intent_alias(alias: str, config: dict[str, Any] | None = None) -> str:
+    """Resolve a short-form @-prefixed alias to a full intent name.
+
+    vs-tipi and other enclosures use @-shortnames (e.g. @rigr) for concise
+    fleet-identity lookups. This function maps them to the canonical
+    dispatch_<name> intent.
+
+    Resolution rules:
+    1. If the input is already a known intent name, return it unchanged.
+    2. If the input starts with @, strip the prefix and try dispatch_<name>.
+       e.g. @ribir → dispatch_ribir, @rignsde → dispatch_rignsde.
+    3. If no dispatch_ prefix maps, try matching any intent whose target
+       matches the short name.
+    4. Otherwise, raise DispatchError listing known intents.
+
+    Args:
+        alias: Either a full intent name (e.g. "dispatch_ribir") or a
+            short-form alias (e.g. "@rigr").
+        config: Optional pre-loaded config dict. If None, loads from
+            DISPATCH_PATH.
+
+    Returns:
+        The canonical intent name.
+
+    Raises:
+        DispatchError: If the alias cannot be resolved.
+    """
+    if config is None:
+        config = load_dispatch()
+    intents = config.get("intents", {})
+
+    # Rule 1: already a known intent name
+    if alias in intents:
+        return alias
+
+    # Rule 2: @-prefixed short name → dispatch_<name>
+    if alias.startswith("@"):
+        short = alias[1:]
+        candidate = f"dispatch_{short}"
+        if candidate in intents:
+            return candidate
+        # Rule 3: try matching by target name
+        for intent_name, spec in intents.items():
+            targets = spec.get("targets", [])
+            if short in targets:
+                return intent_name
+
+    # Could not resolve
+    known = ", ".join(sorted(intents.keys()))
+    raise DispatchError(
+        f"cannot resolve intent alias {alias!r}. known intents: {known}"
+    )
+
+
 def _resolve_command(
     intent: str,
     substitutions: dict[str, str],
@@ -109,7 +164,11 @@ def run_intent(
 ) -> DispatchResult:
     """Resolve and execute an intent.
 
-    `runner` is injectable for tests. Default is None → `subprocess.run`
+    Accepts either a canonical intent name (e.g. "dispatch_ribir") or a
+    short-form @-alias (e.g. "@rigr"). Aliases are resolved via
+    resolve_intent_alias before command resolution.
+
+    `runner` is injectable for tests. Default is None -> `subprocess.run`
     looked up *at call time* so monkeypatching `subprocess.run` works.
     `substitutions` are the per-intent {vars}. vault_root defaults to
     TIPI_VAULT_ROOT env var or ~/Documents/=notes.
@@ -118,6 +177,8 @@ def run_intent(
         runner = subprocess.run  # resolved at call time — test-patchable
     substitutions.setdefault("vault_root", _require_vault_root())
     config = load_dispatch()
+    # Allow @-shortname aliases (e.g. "@rigr" -> "dispatch_ribir")
+    intent = resolve_intent_alias(intent, config)
     command = _resolve_command(intent, substitutions, config)
     completed = runner(
         command,
