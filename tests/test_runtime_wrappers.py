@@ -13,10 +13,12 @@ from dataclasses import dataclass
 import pytest
 
 from tipi.mcp import _dispatch
+from tipi.mcp._dispatch import load_dispatch
 from tipi.mcp.claude_spawn.server import build_server as build_claude_spawn
 from tipi.mcp.dizzy.server import build_server as build_dizzy
 from tipi.mcp.hermes.server import build_server as build_hermes
 from tipi.mcp.openclaw.server import build_server as build_openclaw
+from tipi.mcp.rbitr.server import build_server as build_rbitr
 
 
 @dataclass
@@ -50,6 +52,7 @@ def fake_runner(monkeypatch):
         (build_dizzy, "tipi-dizzy", {"send_to_discord", "send_to_discord_as_codex"}),
         (build_hermes, "tipi-hermes", {"dispatch_to_hermes"}),
         (build_openclaw, "tipi-openclaw", {"dispatch_to_olivier_mbp", "dispatch_to_kimiclaw"}),
+        (build_rbitr, "tipi-rbitr", {"dispatch_to_rbitr"}),
         (build_claude_spawn, "tipi-claude-spawn", {"spawn_claude_session"}),
     ],
 )
@@ -124,6 +127,20 @@ def test_openclaw_olivier_mbp_and_kimiclaw_differ(fake_runner):
     local_cmd, cloud_cmd = fake_runner
     assert "--remote" not in local_cmd
     assert "--remote" in cloud_cmd
+
+
+def test_rbitr_dispatch_command_template_references_rbitr_endpoint():
+    """dispatch_rbitr command template references the Rbitr :8765 surface.
+
+    Same limitation as dispatch_arbiter / dispatch_ringside: the inline
+    Python -c script has f-string braces that break format_map, so we
+    verify raw template tokens instead of resolved command.
+    """
+    config = load_dispatch()
+    cmd = config["intents"]["dispatch_rbitr"]["command"]
+    assert cmd[0] == "python3"
+    script_block = " ".join(cmd)
+    assert "8765" in script_block  # the rbitr HTTP orchestrator surface
 
 
 def test_claude_spawn_uses_dangerous_flag(fake_runner):

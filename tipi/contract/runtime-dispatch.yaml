@@ -19,8 +19,13 @@
 #   event bus + host-side sidecar worker spawner). dispatch_arbiter
 #   retained for backward compatibility; new code should prefer
 #   dispatch_rbitr.
+# - v4 (2026-08-06) — added dispatch_ringside (Ringside visibility
+#   layer). Ringside is the read-only HUD projection surface per
+#   ADR-0019; this intent registers it as a dispatch target for fleet-
+#   identity lookups and surface projections. Same HTTP contract as
+#   dispatch_rbitr but pinned to the ringside identity on :8700.
 
-version: 3
+version: 4
 
 intents:
   chat_discord:
@@ -42,6 +47,11 @@ intents:
     # worker tier under the Arbiter topology — Arbiter dispatches coding
     # work to Codex via spawn_claude-equivalent paths; this intent remains
     # the Codex-narrating-on-Discord lane (not a dispatch lane).
+    # v4 (2026-08-06): positioned after rbitr and ringside in the registry;
+    # the Codex worker tier now sits beneath both Arbiter/Rbitr (via
+    # dispatch_arbiter/dispatch_rbitr) and Ringside (via dispatch_ringside)
+    # projection paths. See [[fleet-tipi-identities]] v2.0.0 for the
+    # updated Codex role definition.
     description: Fleet chatter via Discord surface (Codex / Bean / Blue)
     targets: [codex, bean, blue]
     transport: dizzy
@@ -98,6 +108,9 @@ intents:
     # Arbiter dispatches coding work. Hermes does NOT classify routing
     # (n8n owns that). See [[fleet-tipi-identities]] v2.0.0 for the
     # updated Hermes role definition.
+    # v4 (2026-08-06): positioned after rbitr and ringside in the
+    # registry; Hermes remains the CC deployment lane, now alongside
+    # the Ringside visibility projection path.
     description: Dispatch task to Hermes (local Nous runtime, MacBook Pro)
     targets: [hermes]
     transport: hermes-cli
@@ -159,23 +172,23 @@ intents:
         try:
             json.loads(body)
         except Exception as e:
-            print(f"ERROR: payload is not valid JSON: {e}", file=sys.stderr); sys.exit(2)
+            print(f"ERROR: payload is not valid JSON: {{e}}", file=sys.stderr); sys.exit(2)
         token = os.environ.get("ARBITER_ADMIN_TOKEN", "")
         if not token:
             print("ERROR: ARBITER_ADMIN_TOKEN not set in env", file=sys.stderr); sys.exit(3)
         req = urllib.request.Request(
             "http://127.0.0.1:8765/dispatch",
             data=body.encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {token}",
+            headers={{
+                "Authorization": f"Bearer {{token}}",
                 "Content-Type": "application/json",
-            },
+            }},
             method="POST",
         )
         try:
             print(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            print(f"ERROR: Arbiter returned {e.code}: {e.read().decode('utf-8', errors='replace')}", file=sys.stderr); sys.exit(4)
+            print(f"ERROR: Arbiter returned {{e.code}}: {{e.read().decode('utf-8', errors='replace')}}", file=sys.stderr); sys.exit(4)
       - "{text}"
 
   dispatch_rbitr:
@@ -195,23 +208,64 @@ intents:
         try:
             json.loads(body)
         except Exception as e:
-            print(f"ERROR: payload is not valid JSON: {e}", file=sys.stderr); sys.exit(2)
+            print(f"ERROR: payload is not valid JSON: {{e}}", file=sys.stderr); sys.exit(2)
         token = os.environ.get("ARBITER_ADMIN_TOKEN", "")
         if not token:
             print("ERROR: ARBITER_ADMIN_TOKEN not set in env", file=sys.stderr); sys.exit(3)
         req = urllib.request.Request(
             "http://127.0.0.1:8765/dispatch",
             data=body.encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {token}",
+            headers={{
+                "Authorization": f"Bearer {{token}}",
                 "Content-Type": "application/json",
-            },
+            }},
             method="POST",
         )
         try:
             print(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            print(f"ERROR: Rbitr returned {e.code}: {e.read().decode('utf-8', errors='replace')}", file=sys.stderr); sys.exit(4)
+            print(f"ERROR: Rbitr returned {{e.code}}: {{e.read().decode('utf-8', errors='replace')}}", file=sys.stderr); sys.exit(4)
+      - "{text}"
+
+  dispatch_ringside:
+    # v4 (2026-08-06): NEW. Ringside is the read-only visibility layer per
+    # ADR-0019 (formerly "Ringer visibility layer"). This intent registers
+    # Ringside as a dispatch target for fleet-identity lookups and surface
+    # projections — the HUD server (:8700) accepts dispatch envelopes for
+    # visibility projection so callers can route projection requests through
+    # the same intent registry as other runtimes. Same HTTP envelope contract
+    # as dispatch_rbitr but pinned to the ringside surface on :8700.
+    # Auth: ARBITER_ADMIN_TOKEN (shared with rbitr/arbiter — Ringside
+    # projection requests are authorized by the same bearer token).
+    description: Dispatch task to Ringside HUD visibility surface (read-only projection layer, ADR-0019)
+    targets: [ringside]
+    transport: ringside-http
+    command:
+      - python3
+      - "-c"
+      - |
+        import os, sys, json, urllib.request, urllib.error
+        body = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
+        try:
+            json.loads(body)
+        except Exception as e:
+            print(f"ERROR: payload is not valid JSON: {{e}}", file=sys.stderr); sys.exit(2)
+        token = os.environ.get("ARBITER_ADMIN_TOKEN", "")
+        if not token:
+            print("ERROR: ARBITER_ADMIN_TOKEN not set in env", file=sys.stderr); sys.exit(3)
+        req = urllib.request.Request(
+            "http://127.0.0.1:8700/dispatch",
+            data=body.encode("utf-8"),
+            headers={{
+                "Authorization": f"Bearer {{token}}",
+                "Content-Type": "application/json",
+            }},
+            method="POST",
+        )
+        try:
+            print(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            print(f"ERROR: Ringside returned {{e.code}}: {{e.read().decode('utf-8', errors='replace')}}", file=sys.stderr); sys.exit(4)
       - "{text}"
 
 # Environment variables the wrappers expect:
@@ -219,9 +273,16 @@ intents:
 #   REQUIRED. No default — run_intent raises if unset to prevent silent
 #   cross-user mis-routing. Set in your shell or VS Code launch env.
 # - ARBITER_ADMIN_TOKEN: bearer token for the Arbiter HTTP server. REQUIRED
-#   for `dispatch_arbiter`. SOPS-managed in production (loaded by Arbiter's
-#   bootstrap.sh into the container env; for direct host invocation, source
-#   via `sops exec-env ~/.secrets/llm-providers.env -- ...`).
+#   for `dispatch_arbiter`, `dispatch_rbitr`, and `dispatch_ringside`.
+#   SOPS-managed in production (loaded by Arbiter's bootstrap.sh into the
+#   container env; for direct host invocation, source via
+#   `sops exec-env ~/.secrets/llm-providers.env -- ...`).
+#
+# Intent-registry order (fleet-identity lookup reference):
+#   chat_discord → chat_discord_as_codex → chat_discord_as_neo →
+#   chat_discord_as_pt → dispatch_hermes → dispatch_olivier_mbp →
+#   dispatch_kimiclaw → spawn_claude → dispatch_arbiter → dispatch_rbitr →
+#   dispatch_ringside
 #
 # Intents intentionally absent (may be added later when their transports land):
 # - reach_running_session (telegram-bridge) — use claude-telegram-bridge directly

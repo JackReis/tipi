@@ -22,6 +22,11 @@ class FakeCompleted:
     stdout: str = ""
     stderr: str = ""
 
+    def __getattr__(self, name):
+        return ""
+    def __getitem__(self, key):
+        return ""
+
 
 def _fake_runner(**kwargs):
     def runner(cmd, *, capture_output, text, timeout, check):  # noqa: D401
@@ -41,6 +46,9 @@ def test_load_dispatch_reads_yaml_and_has_expected_intents():
         "dispatch_olivier_mbp",
         "dispatch_kimiclaw",
         "spawn_claude",
+        "dispatch_arbiter",
+        "dispatch_rbitr",
+        "dispatch_ringside",
     ):
         assert expected in intents, f"missing intent: {expected}"
 
@@ -150,3 +158,68 @@ def test_run_intent_raises_when_vault_root_unset(monkeypatch):
     runner = _fake_runner()
     with pytest.raises(DispatchError, match="TIPI_VAULT_ROOT"):
         run_intent("chat_discord", runner=runner, slug="zoe", text="hello")
+
+
+def test_dispatch_ringside_intent_registered_with_correct_metadata():
+    """dispatch_ringside targets the Ringside visibility surface on :8700."""
+    config = load_dispatch()
+    spec = config["intents"]["dispatch_ringside"]
+    assert spec["targets"] == ["ringside"]
+    assert spec["transport"] == "ringside-http"
+    assert spec["description"], "intent should have a description"
+
+
+def test_dispatch_ringside_command_resolves_with_text_substitution():
+    """dispatch_ringside command template resolves {text} and references :8700.
+
+    Previously the inline Python f-string braces caused format_map to fail.
+    Those braces are now escaped (doubled) so only {text} is substituted.
+    """
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_ringside",
+        {"vault_root": "/tmp/vault", "text": "ringside test"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "ringside test"
+    assert any("8700" in str(c) for c in cmd)
+
+
+def test_dispatch_rbitr_intent_registered_with_correct_metadata():
+    """dispatch_rbitr targets the Rbitr orchestrator on :8765."""
+    config = load_dispatch()
+    spec = config["intents"]["dispatch_rbitr"]
+    assert spec["targets"] == ["rbitr"]
+    assert spec["transport"] == "rbitr-http"
+    assert spec["description"], "intent should have a description"
+
+
+def test_dispatch_rbitr_command_resolves_with_text_substitution():
+    """dispatch_rbitr command template resolves {text} and references :8765.
+
+    Previously the inline Python f-string braces caused format_map to fail.
+    Those braces are now escaped (doubled) so only {text} is substituted.
+    """
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_rbitr",
+        {"vault_root": "/tmp/vault", "text": "hello rbitr"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "hello rbitr"
+    assert any("8765" in str(c) for c in cmd)
+
+
+def test_dispatch_arbiter_command_still_resolves():
+    """dispatch_arbiter (backward compat) also resolves after brace escaping."""
+    config = load_dispatch()
+    cmd = _resolve_command(
+        "dispatch_arbiter",
+        {"vault_root": "/tmp/vault", "text": "arbiter test"},
+        config,
+    )
+    assert cmd[0] == "python3"
+    assert cmd[-1] == "arbiter test"
+    assert any("8765" in str(c) for c in cmd)
